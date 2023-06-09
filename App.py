@@ -1,112 +1,167 @@
 import pandas as pd
 import numpy as np
-import datetime
-#SB
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename, asksaveasfilename
 from openpyxl import load_workbook
 from openpyxl.styles import Font, Color
 
-# Read the Excel files
-df1 = pd.read_excel('C:/test/Test1.xlsx')
-df2 = pd.read_excel('C:/test/Test2.xlsx')
+# Create a Tkinter root window
+root = Tk()
+# Hide the root window
+root.withdraw()
 
-# Keep only 'Employee name', 'Ticket Date' and 'Agency' columns in df2
-df2 = df2[['Employee Name', 'Ticket Date', 'Agency', 'Supervisors Name', 'PM Assigned', 'JobNo|Customer|Description']]
+try:
+    # Open the file picker dialog
+    clockIn_File = askopenfilename()
+    payRoll_File = askopenfilename()
 
-# Convert 'Ticket Date' to datetime in both dataframes
-df1['Ticket Date'] = pd.to_datetime(df1['Ticket Date'])
-df2['Ticket Date'] = pd.to_datetime(df2['Ticket Date'])
+    # Check if a file path was selected
+    if not clockIn_File or not payRoll_File:
+        print("No file selected.")
+        raise SystemExit
 
-# If 'Actual Clock In Time' and 'Actual Clock Out Time' are not datetime, convert them
-df1['Actual Clock In Time'] = pd.to_datetime(df1['Actual Clock In Time'])
-df1['Actual Clock Out Time'] = pd.to_datetime(df1['Actual Clock Out Time'])
+    # Read the Excel files
+    df1 = pd.read_excel(clockIn_File)
+    df2 = pd.read_excel(payRoll_File)
 
-# Calculate 'Actual Hours Worked' as the difference between 'Actual Clock Out Time' and 'Actual Clock In Time', converted to hours
-df1['Actual Hours Worked'] = (df1['Actual Clock Out Time'] - df1['Actual Clock In Time']).dt.total_seconds() / 3600
+    # Keep only 'Employee name', 'Ticket Date' and 'Agency' columns in df2
+    df2 = df2[
+        ['Employee Name', 'Ticket Date', 'Agency', 'Clock-In ID', 'Supervisors Name', 'PM Assigned',
+         'JobNo|Customer|Description', 'Email', 'WTL Start Date', 'WTL End Date']]
 
-# Round 'Actual Hours Worked' to 2 decimal places
-df1['Actual Hours Worked'] = df1['Actual Hours Worked'].round(2)
+    # Convert 'Ticket Date' to datetime in both dataframes
+    df1['Ticket Date'] = pd.to_datetime(df1['Ticket Date'])
+    df2['Ticket Date'] = pd.to_datetime(df2['Ticket Date'])
 
-# Merge dataframes based on 'Employee name' and 'Ticket Date'
-merged_df = pd.merge(df1, df2, on=['Employee Name', 'Ticket Date'], how='left')
+    # If 'Clock In' and 'Clock Out' are not datetime, convert them
+    df1['Clock In'] = pd.to_datetime(df1['Clock In'])
+    df1['Clock Out'] = pd.to_datetime(df1['Clock Out'])
 
-# If 'Agency' is blank, fill with 'CSI'
-merged_df['Agency'] = merged_df['Agency'].fillna('CSI')
+    # Calculate 'Actual Hours Worked' as the difference between 'Clock Out' and 'Clock In', converted to hours
+    df1['Actual Hours Worked'] = (df1['Clock Out'] - df1['Clock In']).dt.total_seconds() / 3600
+    # # Add 0.5 to 'Actual Hours Worked' column if there is a WTL Start Date and WTL End Date
+    # df1.loc[~df1['WTL Start Date'].isnull() & ~df1['WTL End Date'].isnull(), 'Actual Hours Worked'] += 0.5
+    # Taking off the half hour for lunch
+    df1['Actual Hours Worked'] = (df1['Actual Hours Worked'] - .5)
 
-# Create a new dataframe for rows with errors
-errors_df = merged_df[(merged_df['Actual Clock In Time'].isna()) |
-                      (merged_df['Actual Clock Out Time'].isna()) |
-                      (merged_df['Actual Hours Worked'] < 8)].copy()
+    # Calculate overtime hours if 'Actual Hours Worked' is greater than 8
+    df1['Overtime'] = np.where(df1['Actual Hours Worked'] > 8, df1['Actual Hours Worked'] - 8, 0)
 
+    # Add 'Day of the Week' column
+    df1['Day of the Week'] = df1['Ticket Date'].dt.day_name()
 
-# Create the 'Error Description' column
-def generate_error_desc(row):
-    if pd.isnull(row['Actual Clock In Time']) and pd.isnull(row['Actual Clock Out Time']):
-        return 'No Clock In or Clock Out Time'
-    elif pd.isnull(row['Actual Clock In Time']):
-        return 'No Clock In'
-    elif pd.isnull(row['Actual Clock Out Time']):
-        return 'No Clock Out'
-    elif row['Actual Hours Worked'] < 8:
-        return 'Less Than 8 Hours'
-    else:
-        return np.nan
+    # # Round 'Actual Hours Worked' to 2 decimal places
+    # df1['Actual Hours Worked'] = df1['Actual Hours Worked'].round(2)
 
-errors_df['Error Description'] = errors_df.apply(generate_error_desc, axis=1)
+    # Merge dataframes based on 'Employee name' and 'Ticket Date'
+    merged_df = pd.merge(df1, df2, on=['Employee Name', 'Ticket Date'], how='left')
 
-# Convert 'Ticket Date' back to 'mm/dd/yyyy' format
-merged_df['Ticket Date'] = merged_df['Ticket Date'].dt.strftime('%m/%d/%Y')
-errors_df['Ticket Date'] = errors_df['Ticket Date'].dt.strftime('%m/%d/%Y')
+    # Add 0.5 to 'Actual Hours Worked' column if there is a WTL Start Date and WTL End Date
+    merged_df.loc[
+        ~merged_df['WTL Start Date'].isnull() & ~merged_df['WTL End Date'].isnull(), 'Actual Hours Worked'] += 0.5
 
-# Write the dataframes into a new Excel file with two sheets
-with pd.ExcelWriter('C:/test/Payroll.xlsx') as writer:
-    merged_df.to_excel(writer, sheet_name='Payroll', index=False)
-    errors_df.to_excel(writer, sheet_name='Errors', index=False)
+    # If 'Agency' is blank, fill with 'CSI'
+    merged_df['Agency'] = merged_df['Agency'].fillna('CSI')
 
-#SB
-# Load the workbook
-wb = load_workbook('C:/test/Payroll.xlsx')
+    # Create a new dataframe for rows with errors
+    errors_df = merged_df[(merged_df['Clock In'].isna()) |
+                          (merged_df['Clock Out'].isna()) |
+                          (merged_df['Actual Hours Worked'] < 8)].copy()
 
-#SB
-# Select the sheets
-sheet1 = wb['Payroll']
-
-#SB
-# Create a red bold font
-red_bold_font = Font(color="FF0000", bold=True)
-
-# Check each cell in column E (5th column) for both sheets
-for sheet in [sheet1]:
-    for row in sheet.iter_rows(min_row=2, min_col=4, max_col=5):
-        for cell in row:
-            if cell.column_letter == 'D' and (cell.value is None or cell.value == ''):
-                cell.value = 'Clock In Time?'
-                cell.font = red_bold_font
-            elif cell.column_letter == 'E' and (cell.value is None or cell.value == ''):
-                cell.value = 'Clock Out Time?'
-                cell.font = red_bold_font
-
-#SB
-#Set column widths
-sheet1.column_dimensions['A'].width = 11.26
-sheet1.column_dimensions['B'].width = 26.14
-sheet1.column_dimensions['C'].width = 31.86
-sheet1.column_dimensions['D'].width = 19
-sheet1.column_dimensions['E'].width = 20.43
-sheet1.column_dimensions['F'].width = 18.71
-sheet1.column_dimensions['G'].width = 20.86
-sheet1.column_dimensions['H'].width = 32.57
-sheet1.column_dimensions['I'].width = 28.71
-sheet1.column_dimensions['B'].width = 22.86
-sheet1.column_dimensions['K'].width = 57.86
+    # Create the 'Error Description' column
+    def generate_error_desc(row):
+        if pd.isnull(row['Clock In']) and pd.isnull(row['Clock Out']):
+            return 'No Clock In or Clock Out Time'
+        elif pd.isnull(row['Clock In']):
+            return 'No Clock In'
+        elif pd.isnull(row['Clock Out']):
+            return 'No Clock Out'
+        elif row['Actual Hours Worked'] < 8:
+            return 'Less Than 8 Hours'
+        else:
+            return np.nan
 
 
+    errors_df['Error Description'] = errors_df.apply(generate_error_desc, axis=1)
 
-#SB
-# Save workbook
-wb.save('C:/test/Payroll.xlsx')
+    # Convert 'Ticket Date' back to 'mm/dd/yyyy' format
+    merged_df['Ticket Date'] = merged_df['Ticket Date'].dt.strftime('%m/%d/%Y')
+    errors_df['Ticket Date'] = errors_df['Ticket Date'].dt.strftime('%m/%d/%Y')
 
+    # Write the dataframes into a new Excel file with two sheets
+    with pd.ExcelWriter('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx') as writer:
+        merged_df.to_excel(writer, sheet_name='Payroll', index=False)
+        errors_df.to_excel(writer, sheet_name='Errors', index=False)
 
+    # SB
+    # Load the workbook
+    wb = load_workbook('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
 
+    # SB
+    # Select the sheets
+    sheet1 = wb['Payroll']
 
+    # SB
+    # Create a red bold font
+    red_bold_font = Font(color="FF0000", bold=True)
 
+    # Check each cell in column E (5th column) for both sheets
+    for sheet in [sheet1]:
+        for row in sheet.iter_rows(min_row=2, min_col=4, max_col=5):
+            for cell in row:
+                if cell.column_letter == 'D' and (cell.value is None or cell.value == ''):
+                    cell.value = 'Clock In Time?'
+                    cell.font = red_bold_font
+                elif cell.column_letter == 'E' and (cell.value is None or cell.value == ''):
+                    cell.value = 'Clock Out Time?'
+                    cell.font = red_bold_font
 
+    # SB
+    # Set column widths
+    sheet1.column_dimensions['A'].width = 11.26
+    sheet1.column_dimensions['B'].width = 26.14
+    sheet1.column_dimensions['C'].width = 31.86
+    sheet1.column_dimensions['D'].width = 19
+    sheet1.column_dimensions['E'].width = 20.43
+    sheet1.column_dimensions['F'].width = 18.71
+    sheet1.column_dimensions['G'].width = 20.86
+    sheet1.column_dimensions['H'].width = 18
+    sheet1.column_dimensions['I'].width = 32.57
+    sheet1.column_dimensions['J'].width = 28.71
+    sheet1.column_dimensions['K'].width = 20
+    sheet1.column_dimensions['L'].width = 22.86
+    sheet1.column_dimensions['M'].width = 33.86
+    sheet1.column_dimensions['N'].width = 71.57
+    sheet1.column_dimensions['O'].width = 31.86
+    sheet1.column_dimensions['P'].width = 20.43
+    sheet1.column_dimensions['Q'].width = 20.43
+
+    # Select the sheets
+    sheet2 = wb['Errors']
+
+    # Set column widths
+    sheet2.column_dimensions['A'].width = 11.26
+    sheet2.column_dimensions['B'].width = 26.14
+    sheet2.column_dimensions['C'].width = 31.86
+    sheet2.column_dimensions['D'].width = 19
+    sheet2.column_dimensions['E'].width = 20.43
+    sheet2.column_dimensions['F'].width = 18.71
+    sheet2.column_dimensions['G'].width = 20.86
+    sheet2.column_dimensions['H'].width = 18
+    sheet2.column_dimensions['I'].width = 32.57
+    sheet2.column_dimensions['J'].width = 28.71
+    sheet2.column_dimensions['K'].width = 20
+    sheet2.column_dimensions['L'].width = 22.86
+    sheet2.column_dimensions['M'].width = 33.86
+    sheet2.column_dimensions['N'].width = 71.57
+    sheet2.column_dimensions['O'].width = 31.86
+    sheet2.column_dimensions['P'].width = 20.43
+    sheet2.column_dimensions['Q'].width = 20.43
+    sheet2.column_dimensions['R'].width = 20.43
+
+    # Save workbook
+    wb.save('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
+
+except Exception as e:
+    print("An error occurred:", str(e))
+    raise SystemExit
