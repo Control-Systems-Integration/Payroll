@@ -10,18 +10,18 @@ df1 = pd.read_excel('C:/test/Test1.xlsx')
 df2 = pd.read_excel('C:/test/Test2.xlsx')
 
 # Keep only 'Employee name', 'Ticket Date' and 'Agency' columns in df2
-df2 = df2[['Employee Name', 'Ticket Date', 'Agency', 'Supervisors Name', 'PM Assigned', 'JobNo|Customer|Description']]
+df2 = df2[['Employee Name', 'Ticket Date', 'Agency', 'Supervisors Name', 'PM Assigned', 'JobNo|Customer|Description', 'Email', 'WTL Start Date', 'WTL End Date']]
 
 # Convert 'Ticket Date' to datetime in both dataframes
 df1['Ticket Date'] = pd.to_datetime(df1['Ticket Date'])
 df2['Ticket Date'] = pd.to_datetime(df2['Ticket Date'])
 
-# If 'Actual Clock In Time' and 'Actual Clock Out Time' are not datetime, convert them
-df1['Actual Clock In Time'] = pd.to_datetime(df1['Actual Clock In Time'])
-df1['Actual Clock Out Time'] = pd.to_datetime(df1['Actual Clock Out Time'])
+# If 'Clock In' and 'Clock Out' are not datetime, convert them
+df1['Clock In'] = pd.to_datetime(df1['Clock In'])
+df1['Clock Out'] = pd.to_datetime(df1['Clock Out'])
 
-# Calculate 'Actual Hours Worked' as the difference between 'Actual Clock Out Time' and 'Actual Clock In Time', converted to hours
-df1['Actual Hours Worked'] = (df1['Actual Clock Out Time'] - df1['Actual Clock In Time']).dt.total_seconds() / 3600
+# Calculate 'Actual Hours Worked' as the difference between 'Clock Out' and 'Clock In', converted to hours
+df1['Actual Hours Worked'] = (df1['Clock Out'] - df1['Clock In']).dt.total_seconds() / 3600
 
 # Round 'Actual Hours Worked' to 2 decimal places
 df1['Actual Hours Worked'] = df1['Actual Hours Worked'].round(2)
@@ -33,18 +33,18 @@ merged_df = pd.merge(df1, df2, on=['Employee Name', 'Ticket Date'], how='left')
 merged_df['Agency'] = merged_df['Agency'].fillna('CSI')
 
 # Create a new dataframe for rows with errors
-errors_df = merged_df[(merged_df['Actual Clock In Time'].isna()) |
-                      (merged_df['Actual Clock Out Time'].isna()) |
+errors_df = merged_df[(merged_df['Clock In'].isna()) |
+                      (merged_df['Clock Out'].isna()) |
                       (merged_df['Actual Hours Worked'] < 8)].copy()
 
 
 # Create the 'Error Description' column
 def generate_error_desc(row):
-    if pd.isnull(row['Actual Clock In Time']) and pd.isnull(row['Actual Clock Out Time']):
+    if pd.isnull(row['Clock In']) and pd.isnull(row['Clock Out']):
         return 'No Clock In or Clock Out Time'
-    elif pd.isnull(row['Actual Clock In Time']):
+    elif pd.isnull(row['Clock In']):
         return 'No Clock In'
-    elif pd.isnull(row['Actual Clock Out Time']):
+    elif pd.isnull(row['Clock Out']):
         return 'No Clock Out'
     elif row['Actual Hours Worked'] < 8:
         return 'Less Than 8 Hours'
@@ -96,15 +96,13 @@ sheet1.column_dimensions['F'].width = 18.71
 sheet1.column_dimensions['G'].width = 20.86
 sheet1.column_dimensions['H'].width = 32.57
 sheet1.column_dimensions['I'].width = 28.71
-sheet1.column_dimensions['B'].width = 22.86
-sheet1.column_dimensions['K'].width = 57.86
-
-
+sheet1.column_dimensions['J'].width = 22.86
+sheet1.column_dimensions['K'].width = 71.57
+sheet1.column_dimensions['L'].width = 33.86
 
 #SB
 # Save workbook
 wb.save('C:/test/Payroll.xlsx')
-
 
 
 
