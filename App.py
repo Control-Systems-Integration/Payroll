@@ -1,3 +1,4 @@
+import datetime
 import pandas as pd
 import numpy as np
 from tkinter import Tk
@@ -26,8 +27,9 @@ try:
 
     # Keep only 'Employee name', 'Ticket Date' and 'Agency' columns in df2
     df2 = df2[
-        ['Employee Name', 'Ticket Date', 'Agency', 'Clock-In ID', 'Supervisors Name', 'PM Assigned',
-         'JobNo|Customer|Description', 'Email', 'WTL Start Date', 'WTL End Date']]
+        ['Employee Name', 'Employee ID', 'Ticket Date', 'Agency', 'Clock-In ID', 'Supervisors Name', 'PM Assigned',
+         'JobNo|Customer|Description', 'Email', 'WTL Approved', 'WTL Start Date', 'WTL End Date', 'ApprovedOvertime',
+         'ApprovedOvertime Start Date', 'ApprovedOvertime End Date']]
 
     # Convert 'Ticket Date' to datetime in both dataframes
     df1['Ticket Date'] = pd.to_datetime(df1['Ticket Date'])
@@ -39,19 +41,25 @@ try:
 
     # Calculate 'Actual Hours Worked' as the difference between 'Clock Out' and 'Clock In', converted to hours
     df1['Actual Hours Worked'] = (df1['Clock Out'] - df1['Clock In']).dt.total_seconds() / 3600
-    # # Add 0.5 to 'Actual Hours Worked' column if there is a WTL Start Date and WTL End Date
-    # df1.loc[~df1['WTL Start Date'].isnull() & ~df1['WTL End Date'].isnull(), 'Actual Hours Worked'] += 0.5
     # Taking off the half hour for lunch
     df1['Actual Hours Worked'] = (df1['Actual Hours Worked'] - .5)
 
-    # Calculate overtime hours if 'Actual Hours Worked' is greater than 8
-    df1['Overtime'] = np.where(df1['Actual Hours Worked'] > 8, df1['Actual Hours Worked'] - 8, 0)
+    # Convert 'ApprovedOvertime' column to boolean (if needed)
+    df2['ApprovedOvertime'] = df2['ApprovedOvertime'].astype(bool)
+
+    approved_overtime_mask = (df2['ApprovedOvertime']) & \
+                             (df1['Ticket Date'].between(df2['ApprovedOvertime Start Date'],
+                                                         df2['ApprovedOvertime End Date'])) & \
+                             (df1['Actual Hours Worked'] >= 8)
+
+    df1['Overtime'] = np.where(approved_overtime_mask, df1['Actual Hours Worked'] - 8, 0)
+    df1.loc[~approved_overtime_mask, 'Overtime'] = 0
+
+    # # Calculate overtime hours if 'Actual Hours Worked' is greater than 8
+    # df1['Overtime'] = np.where(df1['Actual Hours Worked'] > 8, df1['Actual Hours Worked'] - 8, 0)
 
     # Add 'Day of the Week' column
     df1['Day of the Week'] = df1['Ticket Date'].dt.day_name()
-
-    # # Round 'Actual Hours Worked' to 2 decimal places
-    # df1['Actual Hours Worked'] = df1['Actual Hours Worked'].round(2)
 
     # Merge dataframes based on 'Employee name' and 'Ticket Date'
     merged_df = pd.merge(df1, df2, on=['Employee Name', 'Ticket Date'], how='left')
@@ -125,16 +133,21 @@ try:
     sheet1.column_dimensions['E'].width = 20.43
     sheet1.column_dimensions['F'].width = 18.71
     sheet1.column_dimensions['G'].width = 20.86
-    sheet1.column_dimensions['H'].width = 18
-    sheet1.column_dimensions['I'].width = 32.57
-    sheet1.column_dimensions['J'].width = 28.71
+    sheet1.column_dimensions['H'].width = 16
+    sheet1.column_dimensions['I'].width = 26
+    sheet1.column_dimensions['J'].width = 19
     sheet1.column_dimensions['K'].width = 20
-    sheet1.column_dimensions['L'].width = 22.86
-    sheet1.column_dimensions['M'].width = 33.86
-    sheet1.column_dimensions['N'].width = 71.57
-    sheet1.column_dimensions['O'].width = 31.86
-    sheet1.column_dimensions['P'].width = 20.43
-    sheet1.column_dimensions['Q'].width = 20.43
+    sheet1.column_dimensions['L'].width = 19
+    sheet1.column_dimensions['M'].width = 29
+    sheet1.column_dimensions['N'].width = 22
+    sheet1.column_dimensions['O'].width = 71.57
+    sheet1.column_dimensions['P'].width = 25
+    sheet1.column_dimensions['Q'].width = 18
+    sheet1.column_dimensions['R'].width = 20.43
+    sheet1.column_dimensions['S'].width = 20.43
+    sheet1.column_dimensions['T'].width = 29
+    sheet1.column_dimensions['U'].width = 29
+    sheet1.column_dimensions['V'].width = 29
 
     # Select the sheets
     sheet2 = wb['Errors']
@@ -162,6 +175,115 @@ try:
     # Save workbook
     wb.save('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
 
+
+    def round_time(dt):
+        # Calculate the number of minutes past the last 15-minute mark
+        minutes = (dt.minute % 15) * 60 + dt.second
+
+        # If the number of minutes is less than 7, round down; otherwise, round up
+        if minutes < 7 * 60:
+            dt = dt - datetime.timedelta(minutes=dt.minute % 15, seconds=dt.second)
+        else:
+            dt = dt + datetime.timedelta(minutes=15 - dt.minute % 15, seconds=-dt.second)
+
+        return dt
+
+
+    # Load the Excel file
+    df = pd.read_excel('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
+
+    # Load the Employee Name data from Test3.xlsx file
+    df_test3 = pd.read_excel('C:/Users/tj-fo/Desktop/Test/Test3.xlsx')
+    employee_names_test3 = df_test3['Employee Name'].unique()
+
+    # Convert the 'Ticket Date', 'Clock In', and 'Clock Out' columns to datetime
+    df['Ticket Date'] = pd.to_datetime(df['Ticket Date'])
+    df['Clock In'] = pd.to_datetime(df['Clock In']).apply(round_time)
+    df['Clock Out'] = pd.to_datetime(df['Clock Out']).apply(round_time)
+
+    # Calculate the total hours worked for each job
+    df['Total Hours Worked'] = (df['Clock Out'] - df['Clock In']).dt.total_seconds() / 3600
+
+    # Create a list to hold the results
+    results = []
+
+    # Create a DataFrame to hold missing Employees
+    missing_employees = pd.DataFrame(columns=['Employee Name', 'Ticket Date'])
+
+    # Group by 'Employee Name', 'JobNo|Customer|Description', 'Agency', and 'Ticket Date'
+    grouped = df.groupby(['Employee Name', 'JobNo|Customer|Description', 'Agency', df['Ticket Date'].dt.date])
+
+    for name, group in grouped:
+        if name[0] not in employee_names_test3:
+            missing_employees = missing_employees.append({'Employee Name': name[0], 'Ticket Date': name[3]},
+                                                         ignore_index=True)
+
+    for name, group in grouped:
+        total_hours = group['Total Hours Worked'].sum()
+
+        # Deduct 30 minutes for lunch break if the employee worked for more than 5 hours
+        if total_hours > 5:
+            total_hours -= 0.5
+
+        regular_hours = round(min(8, total_hours), 2)
+        overtime_hours = round(max(0, total_hours - 8), 2)
+
+        # SB
+        print(group.columns)
+
+        # If the Ticket Date is on a Saturday or Sunday, all hours are overtime
+        if group['Ticket Date'].dt.dayofweek.iloc[0] >= 5:
+            overtime_hours = round(total_hours, 2)
+            regular_hours = 0
+
+        results.append(pd.DataFrame({
+            'Employee Name': [name[0]],
+            'Employee ID': [group['Employee ID'].iloc[0]],
+            'JobNo|Customer|Description': [name[1]],
+            'Agency': [name[2]],
+            'Ticket Date': [name[3]],
+            'Day': [group['Ticket Date'].dt.day_name().iloc[0]],
+            'Regular Hours': [regular_hours],
+            'Overtime Hours': [overtime_hours],
+            'Clock In': [group['Clock In'].iloc[0]],
+            'Clock Out': [group['Clock Out'].iloc[0]],
+            'Supervisors Name': [group['Supervisors Name'].iloc[0]],
+            'PM Assigned': [group['PM Assigned'].iloc[0]],
+            'Email': [group['Email'].iloc[0]],
+            'WTL Approved': [group['WTL Approved'].iloc[0]],
+            'ApprovedOvertime': [group['ApprovedOvertime'].iloc[0]]
+        }))
+
+    # Concatenate all the results into a single dataframe
+    result = pd.concat(results)
+
+    # Save the result to a new Excel file
+    result.to_excel('C:/Users/tj-fo/Desktop/Test/Results.xlsx', index=False)
+
+    # Load the workbook
+    book = load_workbook('C:/Users/tj-fo/Desktop/Test/Results.xlsx')
+
+    # Access the sheet by name or index
+    sheet1 = book['Sheet1']
+
+    # Set column widths
+    sheet1.column_dimensions['A'].width = 29.71
+    sheet1.column_dimensions['B'].width = 12.57
+    sheet1.column_dimensions['C'].width = 72.71
+    sheet1.column_dimensions['D'].width = 17
+    sheet1.column_dimensions['E'].width = 14.29
+    sheet1.column_dimensions['F'].width = 15.14
+    sheet1.column_dimensions['G'].width = 15
+    sheet1.column_dimensions['H'].width = 16.71
+    sheet1.column_dimensions['I'].width = 20.29
+    sheet1.column_dimensions['J'].width = 27.71
+    sheet1.column_dimensions['K'].width = 22.43
+    sheet1.column_dimensions['L'].width = 23.57
+    sheet1.column_dimensions['M'].width = 35.29
+    sheet1.column_dimensions['N'].width = 20.57
+
+    # Save the modified workbook
+    book.save('C:/Users/tj-fo/Desktop/Test/Results.xlsx')
 except Exception as e:
     print("An error occurred:", str(e))
     raise SystemExit
