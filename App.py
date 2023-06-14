@@ -64,9 +64,11 @@ try:
     # If 'Agency' is blank, fill with 'CSI'
     merged_df['Agency'] = merged_df['Agency'].fillna('CSI')
 
-    # Create a new dataframe for rows with errors
     errors_df = merged_df[(merged_df['Clock In'].isna()) |
                           (merged_df['Clock Out'].isna()) |
+                          ((merged_df['Actual Hours Worked'] > 8) &
+                           (merged_df['ApprovedOvertime Start Date'].isnull()) &
+                           (merged_df['ApprovedOvertime End Date'].isnull())) |
                           (merged_df['Actual Hours Worked'] < 8)].copy()
 
     # Create the 'Error Description' column
@@ -100,16 +102,19 @@ try:
     merged_df = merged_df.reindex(columns=column_order)
 
     # Write the dataframes into a new Excel file with two sheets
-    with pd.ExcelWriter('C:\\test\\result.xlsx') as writer:
+    with pd.ExcelWriter('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx') as writer:
         merged_df.to_excel(writer, sheet_name='Payroll', index=False)
         errors_df.to_excel(writer, sheet_name='Errors', index=False)
 
+    # SB
     # Load the workbook
-    wb = load_workbook('C:\\test\\result.xlsx')
+    wb = load_workbook('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
 
+    # SB
     # Select the sheets
     sheet1 = wb['Payroll']
 
+    # SB
     # Create a red bold font
     red_bold_font = Font(color="FF0000", bold=True)
 
@@ -124,6 +129,7 @@ try:
                     cell.value = 'Clock Out Time?'
                     cell.font = red_bold_font
 
+    # SB
     # Set column widths
     sheet1.column_dimensions['A'].width = 11.26
     sheet1.column_dimensions['B'].width = 26.14
@@ -172,7 +178,8 @@ try:
     sheet2.column_dimensions['R'].width = 20.43
 
     # Save workbook
-    wb.save('C:\\test\\result.xlsx')
+    wb.save('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
+
 
     def round_time(dt):
         # Calculate the number of minutes past the last 15-minute mark
@@ -186,11 +193,12 @@ try:
 
         return dt
 
+
     # Load the Excel file
-    df = pd.read_excel('C:\\test\\result.xlsx')
+    df = pd.read_excel('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
 
     # Load the Employee Name data from Test3.xlsx file
-    df_test3 = pd.read_excel('C:\\test\\Test3.xlsx')
+    df_test3 = pd.read_excel('C:/Users/tj-fo/Desktop/Test/Test3.xlsx')
     employee_names_test3 = df_test3['Employee Name'].unique()
 
     # Convert the 'Ticket Date', 'Clock In', and 'Clock Out' columns to datetime
@@ -255,10 +263,10 @@ try:
     result = pd.concat(results)
 
     # Save the result to a new Excel file
-    result.to_excel('C:/test/Payroll.xlsx', index=False)
+    result.to_excel('C:/Users/tj-fo/Desktop/Test/Results.xlsx', index=False)
 
     # Load the workbook
-    book = load_workbook('C:/test/Payroll.xlsx')
+    book = load_workbook('C:/Users/tj-fo/Desktop/Test/Results.xlsx')
 
     # Access the sheet by name or index
     sheet1 = book['Sheet1']
@@ -280,7 +288,7 @@ try:
     sheet1.column_dimensions['N'].width = 20.57
 
     # Save the modified workbook
-    book.save('C:/test/Payroll.xlsx')
+    book.save('C:/Users/tj-fo/Desktop/Test/Results.xlsx')
 except Exception as e:
     print("An error occurred:", str(e))
     raise SystemExit
