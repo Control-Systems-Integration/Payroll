@@ -44,20 +44,6 @@ try:
     # Taking off the half hour for lunch
     df1['Actual Hours Worked'] = (df1['Actual Hours Worked'] - .5)
 
-    # Convert 'ApprovedOvertime' column to boolean (if needed)
-    df2['ApprovedOvertime'] = df2['ApprovedOvertime'].astype(bool)
-
-    approved_overtime_mask = (df2['ApprovedOvertime']) & \
-                             (df1['Ticket Date'].between(df2['ApprovedOvertime Start Date'],
-                                                         df2['ApprovedOvertime End Date'])) & \
-                             (df1['Actual Hours Worked'] >= 8)
-
-    df1['Overtime'] = np.where(approved_overtime_mask, df1['Actual Hours Worked'] - 8, 0)
-    df1.loc[~approved_overtime_mask, 'Overtime'] = 0
-
-    # # Calculate overtime hours if 'Actual Hours Worked' is greater than 8
-    # df1['Overtime'] = np.where(df1['Actual Hours Worked'] > 8, df1['Actual Hours Worked'] - 8, 0)
-
     # Add 'Day of the Week' column
     df1['Day of the Week'] = df1['Ticket Date'].dt.day_name()
 
@@ -67,6 +53,13 @@ try:
     # Add 0.5 to 'Actual Hours Worked' column if there is a WTL Start Date and WTL End Date
     merged_df.loc[
         ~merged_df['WTL Start Date'].isnull() & ~merged_df['WTL End Date'].isnull(), 'Actual Hours Worked'] += 0.5
+
+    approved_overtime_mask = (~merged_df['ApprovedOvertime Start Date'].isnull()) & \
+                             (~merged_df['ApprovedOvertime End Date'].isnull()) & \
+                             (merged_df['Actual Hours Worked'] > 8)
+
+    merged_df.loc[approved_overtime_mask, 'Overtime'] = merged_df.loc[approved_overtime_mask, 'Actual Hours Worked'] - 8
+    merged_df.loc[~approved_overtime_mask, 'Overtime'] = 0
 
     # If 'Agency' is blank, fill with 'CSI'
     merged_df['Agency'] = merged_df['Agency'].fillna('CSI')
@@ -96,20 +89,27 @@ try:
     merged_df['Ticket Date'] = merged_df['Ticket Date'].dt.strftime('%m/%d/%Y')
     errors_df['Ticket Date'] = errors_df['Ticket Date'].dt.strftime('%m/%d/%Y')
 
+    # Define the desired column order
+    column_order = ['Ticket Date', 'Quote/Job Number Number', 'Employee Name', 'Clock In', 'Clock Out', 'Hours Worked',
+                    'Actual Hours Worked', 'Overtime', 'Day of the Week', 'Employee ID', 'Agency', 'Clock-In ID',
+                    'Supervisors Name', 'PM Assigned', 'JobNo|Customer|Description', 'Email', 'WTL Approved',
+                    'WTL Start Date', 'WTL End Date', 'ApprovedOvertime', 'ApprovedOvertime Start Date',
+                    'ApprovedOvertime End Date']
+
+    # Reorder the columns in the DataFrame
+    merged_df = merged_df.reindex(columns=column_order)
+
     # Write the dataframes into a new Excel file with two sheets
-    with pd.ExcelWriter('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx') as writer:
+    with pd.ExcelWriter('C:\\test\\result.xlsx') as writer:
         merged_df.to_excel(writer, sheet_name='Payroll', index=False)
         errors_df.to_excel(writer, sheet_name='Errors', index=False)
 
-    # SB
     # Load the workbook
-    wb = load_workbook('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
+    wb = load_workbook('C:\\test\\result.xlsx')
 
-    # SB
     # Select the sheets
     sheet1 = wb['Payroll']
 
-    # SB
     # Create a red bold font
     red_bold_font = Font(color="FF0000", bold=True)
 
@@ -124,7 +124,6 @@ try:
                     cell.value = 'Clock Out Time?'
                     cell.font = red_bold_font
 
-    # SB
     # Set column widths
     sheet1.column_dimensions['A'].width = 11.26
     sheet1.column_dimensions['B'].width = 26.14
@@ -173,8 +172,7 @@ try:
     sheet2.column_dimensions['R'].width = 20.43
 
     # Save workbook
-    wb.save('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
-
+    wb.save('C:\\test\\result.xlsx')
 
     def round_time(dt):
         # Calculate the number of minutes past the last 15-minute mark
@@ -188,12 +186,11 @@ try:
 
         return dt
 
-
     # Load the Excel file
-    df = pd.read_excel('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
+    df = pd.read_excel('C:\\test\\result.xlsx')
 
     # Load the Employee Name data from Test3.xlsx file
-    df_test3 = pd.read_excel('C:/Users/tj-fo/Desktop/Test/Test3.xlsx')
+    df_test3 = pd.read_excel('C:\\test\\Test3.xlsx')
     employee_names_test3 = df_test3['Employee Name'].unique()
 
     # Convert the 'Ticket Date', 'Clock In', and 'Clock Out' columns to datetime
@@ -258,10 +255,10 @@ try:
     result = pd.concat(results)
 
     # Save the result to a new Excel file
-    result.to_excel('C:/Users/tj-fo/Desktop/Test/Results.xlsx', index=False)
+    result.to_excel('C:/test/Payroll.xlsx', index=False)
 
     # Load the workbook
-    book = load_workbook('C:/Users/tj-fo/Desktop/Test/Results.xlsx')
+    book = load_workbook('C:/test/Payroll.xlsx')
 
     # Access the sheet by name or index
     sheet1 = book['Sheet1']
@@ -283,7 +280,7 @@ try:
     sheet1.column_dimensions['N'].width = 20.57
 
     # Save the modified workbook
-    book.save('C:/Users/tj-fo/Desktop/Test/Results.xlsx')
+    book.save('C:/test/Payroll.xlsx')
 except Exception as e:
     print("An error occurred:", str(e))
     raise SystemExit
