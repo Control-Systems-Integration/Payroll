@@ -102,25 +102,23 @@ try:
     merged_df = merged_df.reindex(columns=column_order)
 
     # Write the dataframes into a new Excel file with two sheets
-    with pd.ExcelWriter('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx') as writer:
+    with pd.ExcelWriter('C:/test/Payroll.xlsx') as writer:
         merged_df.to_excel(writer, sheet_name='Payroll', index=False)
         errors_df.to_excel(writer, sheet_name='Errors', index=False)
 
-    # SB
     # Load the workbook
-    wb = load_workbook('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
+    wb = load_workbook('C:/test/Payroll.xlsx')
 
-    # SB
     # Select the sheets
     sheet1 = wb['Payroll']
+    sheet2 = wb['Errors']
 
-    # SB
     # Create a red bold font
     red_bold_font = Font(color="FF0000", bold=True)
 
     # Check each cell in column E (5th column) for both sheets
-    for sheet in [sheet1]:
-        for row in sheet.iter_rows(min_row=2, min_col=4, max_col=5):
+    for sheet in [sheet1, sheet2]:
+        for row in sheet.iter_rows(min_row=2, min_col=4, max_col=7):  # Modify max_col to 7 for 'Payroll' sheet
             for cell in row:
                 if cell.column_letter == 'D' and (cell.value is None or cell.value == ''):
                     cell.value = 'Clock In Time?'
@@ -128,6 +126,17 @@ try:
                 elif cell.column_letter == 'E' and (cell.value is None or cell.value == ''):
                     cell.value = 'Clock Out Time?'
                     cell.font = red_bold_font
+                elif cell.column_letter == 'G' and cell.value is not None and cell.value < 8:  # Add condition for column G
+                    cell.font = red_bold_font
+
+    for row in sheet1.iter_rows(min_row=2, min_col=8, max_col=8):
+        for cell in row:
+            overtime_start_date = cell.offset(
+                column=12).value  # Adjust the column offset to 12 for 'ApprovedOvertime Start Date'
+            overtime_end_date = cell.offset(
+                column=13).value  # Adjust the column offset to 13 for 'ApprovedOvertime End Date'
+            if cell.value is not None and cell.value > 0 and (overtime_start_date is None or overtime_end_date is None):
+                cell.font = red_bold_font
 
     # SB
     # Set column widths
@@ -176,9 +185,14 @@ try:
     sheet2.column_dimensions['P'].width = 20.43
     sheet2.column_dimensions['Q'].width = 20.43
     sheet2.column_dimensions['R'].width = 20.43
+    sheet2.column_dimensions['S'].width = 20.43
+    sheet2.column_dimensions['T'].width = 29
+    sheet2.column_dimensions['U'].width = 29
+    sheet2.column_dimensions['V'].width = 29
+    sheet2.column_dimensions['W'].width = 29
 
     # Save workbook
-    wb.save('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
+    wb.save('C:/test/Payroll.xlsx')
 
 
     def round_time(dt):
@@ -195,10 +209,10 @@ try:
 
 
     # Load the Excel file
-    df = pd.read_excel('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
+    df = pd.read_excel('C:/test/Payroll.xlsx')
 
     # Load the Employee Name data from Test3.xlsx file
-    df_test3 = pd.read_excel('C:/Users/tj-fo/Desktop/Test/Test3.xlsx')
+    df_test3 = pd.read_excel('C:/test/Test3.xlsx')
     employee_names_test3 = df_test3['Employee Name'].unique()
 
     # Convert the 'Ticket Date', 'Clock In', and 'Clock Out' columns to datetime
@@ -263,10 +277,10 @@ try:
     result = pd.concat(results)
 
     # Save the result to a new Excel file
-    result.to_excel('C:/Users/tj-fo/Desktop/Test/Results.xlsx', index=False)
+    result.to_excel('C:/test/Results.xlsx', index=False)
 
     # Load the workbook
-    book = load_workbook('C:/Users/tj-fo/Desktop/Test/Results.xlsx')
+    book = load_workbook('C:/test/Results.xlsx')
 
     # Access the sheet by name or index
     sheet1 = book['Sheet1']
@@ -288,7 +302,7 @@ try:
     sheet1.column_dimensions['N'].width = 20.57
 
     # Save the modified workbook
-    book.save('C:/Users/tj-fo/Desktop/Test/Results.xlsx')
+    book.save('C:/test/Results.xlsx')
 except Exception as e:
     print("An error occurred:", str(e))
     raise SystemExit
