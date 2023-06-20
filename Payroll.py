@@ -103,10 +103,16 @@ try:
     # Calculate the sum of 'Lunch Adjusted' for each group
     merged_df['Total Lunch Adjusted'] = grouped_df['Lunch Adjusted'].transform('sum')
 
-    # Compare 'Total Lunch Adjusted' with 8 and update 'Overtime' and 'Regular Time' accordingly
+    # Calculate the cumulative sum of 'Lunch Adjusted' within each group
+    merged_df['Cumulative Lunch Adjusted'] = grouped_df['Lunch Adjusted'].cumsum()
+
+    # Calculate the remaining balance after deducting 40 from 'Cumulative Lunch Adjusted'
+    merged_df['Remaining Balance'] = merged_df['Cumulative Lunch Adjusted'] - 40
+
+    # Calculate the overtime by subtracting 8 from 'Remaining Balance'
     merged_df['Overtime'] = np.where(
-        (merged_df['Total Lunch Adjusted'] > 8) & (merged_df.duplicated(['Employee Name', 'Ticket Date'])),
-        merged_df['Total Lunch Adjusted'] - 8,
+        (merged_df['Remaining Balance'] > 0) & (merged_df.duplicated(['Employee Name', 'Ticket Date'])),
+        merged_df['Remaining Balance'],
         merged_df['Overtime']
     )
 
