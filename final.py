@@ -36,7 +36,8 @@ try:
 
     # Calculate 'Lunch Adjusted' as the difference between 'Clock Out' and 'Clock In', converted to hours
     df1['Lunch Adjusted'] = (
-        df1['Clock Out'] - df1['Clock In']).dt.total_seconds() / 3600
+                                    df1['Clock Out'] - df1['Clock In']).dt.total_seconds() / 3600
+
     # Taking off the half hour for lunch if Hours Worked is greater than or equal to 5
     df1.loc[df1['Hours Worked'] >= 5, 'Lunch Adjusted'] -= 0.5
 
@@ -45,7 +46,7 @@ try:
 
     # Merge dataframes based on 'Employee name' and 'Ticket Date'
     merged_df = pd.merge(df1, df2, on=[
-                         'Employee Name', 'Ticket Date', 'JobNo|Customer|Description'], how='left')
+        'Employee Name', 'Ticket Date', 'JobNo|Customer|Description'], how='left')
 
     # Remove duplicates from merged_df based on 'Employee name', 'Ticket Date', and 'JobNo|Customer|Description'
     merged_df = merged_df.drop_duplicates(
@@ -67,7 +68,6 @@ try:
 
     # Calculate the overtime for each ticket, considering that the same employee
     # can have more than one ticket in a day.
-
     grouped_by_name = merged_df.groupby(
         ['Employee Name'])
 
@@ -79,13 +79,13 @@ try:
             for index in indices:
                 if worked_hours_needed == 0:
                     merged_df.loc[index,
-                                  'Overtime'] = merged_df.loc[index, 'Lunch Adjusted']
+                    'Overtime'] = merged_df.loc[index, 'Lunch Adjusted']
                 elif worked_hours_needed >= merged_df.loc[index, 'Lunch Adjusted']:
                     worked_hours_needed -= merged_df.loc[index,
-                                                         'Lunch Adjusted']
+                    'Lunch Adjusted']
                 else:
                     merged_df.loc[index, 'Overtime'] = merged_df.loc[index,
-                                                                     'Lunch Adjusted'] - worked_hours_needed
+                    'Lunch Adjusted'] - worked_hours_needed
                     worked_hours_needed = 0
     merged_weekly_df = merged_df.copy(deep=True)
     # Calculate Overtime
@@ -100,27 +100,27 @@ try:
             for index in indices:
                 if worked_hours_needed == 0:
                     merged_weekly_df.loc[index,
-                                  'Overtime'] = merged_weekly_df.loc[index, 'Lunch Adjusted']
+                    'Overtime'] = merged_weekly_df.loc[index, 'Lunch Adjusted']
                     merged_weekly_df.loc[index,
-                                  'Regular Time'] = 0
+                    'Regular Time'] = 0
                 elif worked_hours_needed >= merged_weekly_df.loc[index, 'Lunch Adjusted']:
                     worked_hours_needed -= merged_weekly_df.loc[index,
-                                                         'Lunch Adjusted']
-                    merged_weekly_df.loc[index,'Regular Time'] = merged_weekly_df.loc[index,
-                                                         'Lunch Adjusted']
+                    'Lunch Adjusted']
+                    merged_weekly_df.loc[index, 'Regular Time'] = merged_weekly_df.loc[index,
+                    'Lunch Adjusted']
                 else:
                     merged_weekly_df.loc[index, 'Overtime'] = merged_weekly_df.loc[index,
-                                                                     'Lunch Adjusted'] - worked_hours_needed
-                    merged_weekly_df.loc[index,'Regular Time'] = worked_hours_needed
+                    'Lunch Adjusted'] - worked_hours_needed
+                    merged_weekly_df.loc[index, 'Regular Time'] = worked_hours_needed
                     worked_hours_needed = 0
 
     # Apply additional checks for errors
     errors_df = merged_weekly_df[(merged_weekly_df['Clock In'].isna()) |
-                          (merged_weekly_df['Clock Out'].isna()) |
-                          ((merged_weekly_df['Lunch Adjusted'] > 8) &
-                           (merged_weekly_df['ApprovedOvertime Start Date'].isnull()) &
-                           (merged_weekly_df['ApprovedOvertime End Date'].isnull())) |
-                          (merged_weekly_df['Lunch Adjusted'] < 8)].copy()
+                                 (merged_weekly_df['Clock Out'].isna()) |
+                                 ((merged_weekly_df['Lunch Adjusted'] > 8) &
+                                  (merged_weekly_df['ApprovedOvertime Start Date'].isnull()) &
+                                  (merged_weekly_df['ApprovedOvertime End Date'].isnull())) |
+                                 (merged_weekly_df['Lunch Adjusted'] < 8)].copy()
     print("Number of duplicate records:",
           merged_weekly_df.duplicated(subset=['Employee Name', 'Ticket Date', 'JobNo|Customer|Description']).sum())
     duplicates = merged_weekly_df[
@@ -143,6 +143,7 @@ try:
             return 'Less Than 8 Hours'
         else:
             return np.nan
+
 
     errors_df['Error Description'] = errors_df.apply(
         generate_error_desc, axis=1)
@@ -475,6 +476,7 @@ try:
         else:
             return np.nan
 
+
     errors_df['Error Description'] = errors_df.apply(
         generate_error_desc, axis=1)
 
@@ -673,7 +675,7 @@ try:
     df['Clock Out'] = pd.to_datetime(df['Clock Out'])
 
     # Remove the calculation of total hours worked
-    #df['Total Hours Worked'] = df['Lunch Adjusted']
+    # df['Total Hours Worked'] = df['Lunch Adjusted']
     df['Total Hours Worked'] = df['Regular Time']
 
     # Create a list to hold the results
