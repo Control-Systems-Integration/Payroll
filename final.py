@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
+from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font
 
@@ -99,18 +100,14 @@ try:
         for date, indices in grouped_by_name_by_date.groups.items():
             for index in indices:
                 if worked_hours_needed == 0:
-                    merged_weekly_df.loc[index,
-                    'Overtime'] = merged_weekly_df.loc[index, 'Lunch Adjusted']
-                    merged_weekly_df.loc[index,
-                    'Regular Time'] = 0
+                    merged_weekly_df.loc[index, 'Overtime'] = merged_weekly_df.loc[index, 'Lunch Adjusted']
+                    merged_weekly_df.loc[index, 'Regular Time'] = 0
                 elif worked_hours_needed >= merged_weekly_df.loc[index, 'Lunch Adjusted']:
-                    worked_hours_needed -= merged_weekly_df.loc[index,
-                    'Lunch Adjusted']
-                    merged_weekly_df.loc[index, 'Regular Time'] = merged_weekly_df.loc[index,
-                    'Lunch Adjusted']
+                    worked_hours_needed -= merged_weekly_df.loc[index, 'Lunch Adjusted']
+                    merged_weekly_df.loc[index, 'Regular Time'] = merged_weekly_df.loc[index, 'Lunch Adjusted']
                 else:
-                    merged_weekly_df.loc[index, 'Overtime'] = merged_weekly_df.loc[index,
-                    'Lunch Adjusted'] - worked_hours_needed
+                    merged_weekly_df.loc[index, 'Overtime'] = merged_weekly_df.loc[index, 'Lunch Adjusted'] - \
+                                                              worked_hours_needed
                     merged_weekly_df.loc[index, 'Regular Time'] = worked_hours_needed
                     worked_hours_needed = 0
 
@@ -126,10 +123,6 @@ try:
     duplicates = merged_weekly_df[
         merged_weekly_df.duplicated(subset=['Employee Name', 'Ticket Date', 'JobNo|Customer|Description'], keep=False)]
     print(duplicates)
-
-    # # Update Overtime for errors
-    # errors_df.loc[(errors_df['Overtime'] < 0) & (
-    #     ~errors_df['Agency'].str.contains('CSI', case=False)), 'Overtime'] = 0
 
     # Create the 'Error Description' column
     def generate_error_desc(row):
@@ -342,103 +335,6 @@ try:
 
     # Save workbook
     wb.save('C:/Users/tj-fo/Desktop/Test/PayrollWeekly.xlsx')
-    #
-    # # Filepath where the program will save the weekly resume
-    # filepath = 'C:/Users/tj-fo/Desktop/Test/PayrollWeekly_Resume.xlsx'
-    #
-    # all_employees = []
-    #
-    # # Create Weekly Payroll workbook
-    # wb_weekly_data = Workbook()
-    #
-    # employee_week = None
-    # sheets = []
-    #
-    # # Group by Employee
-    # grouped_by_name = merged_df.groupby(
-    #     ['Employee Name'])
-    #
-    # for name, group_name in grouped_by_name:
-    #
-    #     worked_hours_needed = 40
-    #     total_hours = group_name['Lunch Adjusted'].sum()
-    #
-    #     employee_week = pd.DataFrame({
-    #         'Row Labels': [name[0], 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-    #         'Sum of Regular Time': [min(total_hours, worked_hours_needed), 0, 0, 0, 0, 0, 0, 0],
-    #         'Sum of Overtime': [max(total_hours - worked_hours_needed, 0), 0, 0, 0, 0, 0, 0, 0],
-    #         'Employee Name': [name[0] for i in range(8)]
-    #     })
-    #
-    #     grouped_by_name_by_date = group_name.groupby(
-    #         [merged_df['Ticket Date'].dt.date])
-    #
-    #     for date, group in grouped_by_name_by_date:
-    #         day_worked_hours = group['Lunch Adjusted'].sum()
-    #         week_day = group.iloc[0]['Day of the Week']
-    #
-    #         if worked_hours_needed == 0:
-    #             employee_week.loc[employee_week['Row Labels'] == week_day,
-    #                               'Sum of Overtime'] = day_worked_hours
-    #         elif worked_hours_needed >= day_worked_hours:
-    #             worked_hours_needed -= day_worked_hours
-    #             employee_week.loc[employee_week['Row Labels'] == week_day,
-    #                               'Sum of Regular Time'] = day_worked_hours
-    #         else:
-    #             employee_week.loc[employee_week['Row Labels'] == week_day,
-    #                               'Sum of Regular Time'] = worked_hours_needed
-    #             employee_week.loc[employee_week['Row Labels'] == week_day,
-    #                               'Sum of Overtime'] = day_worked_hours - \
-    #                 worked_hours_needed
-    #             worked_hours_needed = 0
-    #
-    #     grouped_by_name_by_area = group_name.groupby(
-    #         ['JobNo|Customer|Description'])
-    #
-    #     worked_hours_needed = 40
-    #     i = 0
-    #     for name_area, group in grouped_by_name_by_area:
-    #         area = name_area[0]
-    #         worked_hours = group['Lunch Adjusted'].sum()
-    #         new_row = []
-    #         if worked_hours_needed == 0:
-    #             new_row = [area, 0, worked_hours]
-    #         elif worked_hours_needed >= worked_hours:
-    #             worked_hours_needed -= worked_hours
-    #             new_row = [area, worked_hours, 0]
-    #         else:
-    #             new_row = [area, worked_hours_needed,
-    #                        worked_hours - worked_hours_needed]
-    #             worked_hours_needed = 0
-    #
-    #         row = pd.DataFrame(
-    #             {"Row Labels": [new_row[0]], "Sum of Regular Time": [new_row[1]], "Sum of Overtime": [new_row[2]], 'Employee Name':[name[0]]})
-    #         i += 1
-    #         employee_week = pd.concat([employee_week.iloc[:i], row,
-    #                                    employee_week.iloc[i:]]).reset_index(drop=True)
-    #
-    #     all_employees.append(employee_week)
-    #
-    #     #current_sheet = wb_weekly_data[name[0]]
-    #     #sheets.append((name[0], employee_week))
-    #
-    # wb_weekly_data.create_sheet("PayrollWeekly_Resume")
-    # payroll_weekly_df = pd.concat(all_employees).reset_index(drop = True)
-    #
-    # with pd.ExcelWriter(filepath) as writer:
-    #         payroll_weekly_df.to_excel(writer, sheet_name="PayrollWeekly_Resume", index=False)
-    #
-    # wb_weekly_data = load_workbook(filepath)
-    # sheet = wb_weekly_data["PayrollWeekly_Resume"]
-    # sheet.column_dimensions['A'].width = 60
-    # sheet.column_dimensions['B'].width = 23
-    # sheet.column_dimensions['C'].width = 23
-    # sheet.column_dimensions['D'].width = 33
-    #
-    # wb_weekly_data.save(filepath)
-    #
-    # END 40 HOURS RESUME FEATURE
-    ################################################
 
     # Set all hours as overtime if the day of the week is Saturday or Sunday
     df1.loc[df1['Day of the Week'].isin(
@@ -458,10 +354,6 @@ try:
     duplicates = merged_df[
         merged_df.duplicated(subset=['Employee Name', 'Ticket Date', 'JobNo|Customer|Description'], keep=False)]
     print(duplicates)
-
-    # # Update Overtime for errors
-    # errors_df.loc[(errors_df['Overtime'] < 0) & (
-    #     ~errors_df['Agency'].str.contains('CSI', case=False)), 'Overtime'] = 0
 
     # Create the 'Error Description' column
     def generate_error_desc(row):
@@ -666,81 +558,69 @@ try:
     # Save workbook
     wb.save('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
 
-    # Load the Excel file
-    df = pd.read_excel('C:/Users/tj-fo/Desktop/Test/Payroll.xlsx')
+    # Create a new workbook
+    insperity_report = Workbook()
 
-    # Convert the 'Ticket Date', 'Clock In', and 'Clock Out' columns to datetime
-    df['Ticket Date'] = pd.to_datetime(df['Ticket Date'])
-    df['Clock In'] = pd.to_datetime(df['Clock In'])
-    df['Clock Out'] = pd.to_datetime(df['Clock Out'])
+    # Create the desired sheets in the workbook
+    sheets = ['Hours Import', 'Employee Key', 'Pay Type Key', 'Org Level Items']
+    for sheet_name in sheets:
+        insperity_report.create_sheet(sheet_name)
 
-    # Remove the calculation of total hours worked
-    # df['Total Hours Worked'] = df['Lunch Adjusted']
-    df['Total Hours Worked'] = df['Regular Time']
+    # Delete the default "Sheet"
+    default_sheet = insperity_report['Sheet']
+    insperity_report.remove(default_sheet)
 
-    # Create a list to hold the results
-    results = []
+    # Get the 'Hours Import' sheet from the workbook
+    hours_import_sheet = insperity_report['Hours Import']
 
-    # Create a DataFrame to hold missing Employees
-    missing_employees = pd.DataFrame(columns=['Employee Name', 'Ticket Date'])
+    # Read the 'PayrollWeekly' workbook
+    payroll_weekly = load_workbook('C:/Users/tj-fo/Desktop/Test/PayrollWeekly.xlsx')
+    payroll_sheet = payroll_weekly.active
 
-    # Group by 'Employee Name', 'JobNo|Customer|Description', 'Agency', and 'Ticket Date'
-    grouped = df.groupby(
-        ['Employee Name', 'JobNo|Customer|Description', 'Agency', df['Ticket Date'].dt.date])
+    # Select the desired columns from the 'PayrollWeekly' sheet
+    columns_to_copy = ['Employee ID', 'Last Name', 'First Name', 'Ticket Date', 'Regular Time', 'Overtime',
+                       'JobNo|Customer|Description']
+    # Write the column names in the first row of 'Hours Import' sheet
+    for col_idx, column in enumerate(columns_to_copy, start=1):
+        hours_import_sheet.cell(row=1, column=col_idx).value = column
 
-    for name, group in grouped:
-        total_hours = group['Total Hours Worked'].sum()
-        overtime_hours = group['Overtime'].sum()
+    # Copy data from 'PayrollWeekly' to 'Hours Import' sheet
+    for row_idx, row in enumerate(payroll_sheet.iter_rows(min_row=2, values_only=True), start=2):
+        # Split the 'Employee Name' into 'Last Name' and 'First Name'
+        last_name, first_name = row[1].split(',', 1)  # Assuming 'Employee Name' is in the second column (index 1)
 
-        results.append(pd.DataFrame({
-            'Employee Name': [name[0]],
-            'Employee ID': [group['Employee ID'].iloc[0]],
-            'JobNo|Customer|Description': [name[1]],
-            'Agency': [name[2]],
-            'Ticket Date': [name[3]],
-            'Day': [group['Ticket Date'].dt.day_name().iloc[0]],
-            'Regular Hours': [total_hours],
-            'Overtime Hours': [overtime_hours],
-            'Clock In': [group['Clock In'].iloc[0]],
-            'Clock Out': [group['Clock Out'].iloc[0]],
-            'Supervisors Name': [group['Supervisors Name'].iloc[0]],
-            'PM Assigned': [group['PM Assigned'].iloc[0]],
-            'Email': [group['Email'].iloc[0]],
-            'WTL Approved': [group['WTL Approved'].iloc[0]],
-            'ApprovedOvertime': [group['ApprovedOvertime'].iloc[0]]
-        }))
+        # Write the values to the 'Hours Import' sheet
+        hours_import_sheet.cell(row=row_idx, column=1).value = row[9]  # Employee ID (column J)
+        hours_import_sheet.cell(row=row_idx, column=2).value = last_name.strip()  # Last Name
+        hours_import_sheet.cell(row=row_idx, column=3).value = first_name.strip()  # First Name
+        hours_import_sheet.cell(row=row_idx, column=4).value = row[0]  # Ticket Date (column A)
+        hours_import_sheet.cell(row=row_idx, column=5).value = row[6]  # Regular Time (column G)
+        hours_import_sheet.cell(row=row_idx, column=6).value = row[7]  # Overtime (column H)
+        hours_import_sheet.cell(row=row_idx, column=7).value = row[14]  # JobNo|Customer|Description (column O)
 
-    # Concatenate all the results into a single dataframe
-    result = pd.concat(results)
+    # Apply bold font to the title row in the 'Hours Import' sheet
+    title_row = hours_import_sheet[1]
+    for cell in title_row:
+        cell.font = Font(bold=True)
 
-    # Save the result to a new Excel file
-    result.to_excel('C:/Users/tj-fo/Desktop/Test/Results.xlsx', index=False)
+    # Adjust column widths to fit the contents
+    for column in hours_import_sheet.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            if cell.coordinate in hours_import_sheet.merged_cells:
+                continue
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except TypeError:
+                pass
+        adjusted_width = (max_length + 2) * 1.2
+        hours_import_sheet.column_dimensions[column_letter].width = adjusted_width
 
-    # Load the workbook
-    book = load_workbook('C:/Users/tj-fo/Desktop/Test/Results.xlsx')
+    # Save the 'InsperityReport' workbook
+    insperity_report.save('C:/Users/tj-fo/Desktop/Test/InsperityReport.xlsx')
 
-    # Access the sheet by name or index
-    sheet1 = book['Sheet1']
-
-    # Set column widths
-    sheet1.column_dimensions['A'].width = 29.71
-    sheet1.column_dimensions['B'].width = 12.57
-    sheet1.column_dimensions['C'].width = 72.71
-    sheet1.column_dimensions['D'].width = 17
-    sheet1.column_dimensions['E'].width = 14.29
-    sheet1.column_dimensions['F'].width = 15.14
-    sheet1.column_dimensions['G'].width = 15
-    sheet1.column_dimensions['H'].width = 16.71
-    sheet1.column_dimensions['I'].width = 20.29
-    sheet1.column_dimensions['J'].width = 27.71
-    sheet1.column_dimensions['K'].width = 22.43
-    sheet1.column_dimensions['L'].width = 23.57
-    sheet1.column_dimensions['M'].width = 35.29
-    sheet1.column_dimensions['N'].width = 20.57
-    sheet1.column_dimensions['O'].width = 20.57
-
-    # Save the modified workbook
-    book.save('C:/Users/tj-fo/Desktop/Test/Results.xlsx')
 except Exception as e:
     print("An error occurred:", str(e))
     raise SystemExit
